@@ -1,0 +1,17 @@
+# Riviera-PRO & Simulation
+riviera_lib/
+work/
+dataset/
+
+*.asdb
+*.awc
+*.wlf
+compile/
+*.cfg
+sim.txt
+transcript
+*.log
+*.hex
+# Python
+__pycache__/
+*.pyc
