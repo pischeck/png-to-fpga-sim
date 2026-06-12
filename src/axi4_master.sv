@@ -1,10 +1,10 @@
 `timescale 1ns / 1ps
 
 module axi4_master #(
-    parameter int DATA_W    = 16,           // szerokosc danych AXI w BITACH (1 piksel RGB565)
+    parameter int DATA_W    = 32,           // szerokosc danych AXI w BITACH (1 piksel RGB888)
     parameter int ADDR_W    = 16,           // szerokosc adresu
     parameter int ID_W      = 8,            // szerokosc ID
-    parameter int STRB_W    = DATA_W/8,     // = 2 dla 16 bit
+    parameter int STRB_W    = DATA_W/8,     // = 2 dla 32-bit (4 bajty)
     parameter int MAX_BEATS = 256           // ARLEN max -> 256 beatow/burst
 )
 (

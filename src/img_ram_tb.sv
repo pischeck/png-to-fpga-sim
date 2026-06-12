@@ -8,7 +8,7 @@ module img_ram_tb #(
 );
 
     // ---------------- Konfiguracja szyny -----------------------------
-    localparam int DATA_W    = 16;                // 1 piksel RGB565 = 1 slowo AXI
+    localparam int DATA_W    = 32;                // 1 piksel RGB888 = 1 slowo AXI
     localparam int ID_W      = 8;
     localparam int STRB_W    = DATA_W/8;          // = 2
     localparam int MAX_BEATS = 256;               // AWLEN/ARLEN max -> 256 beatow/burst

@@ -42,10 +42,10 @@ if {![regexp {DIMS\s+(\d+)\s+(\d+)} $out -> IMG_W IMG_H]} {
     error "Nie udalo sie odczytac wymiarow (oczekiwana linia 'DIMS W H') z png2hex.py - sprawdz wydruk."
 }
 set NUM_PIXELS [expr {$IMG_W * $IMG_H}]
-# ADDR_W = ceil(log2(NUM_PIXELS)) + clog2(STRB_W);  STRB_W=2 (16-bit) -> +1
+# ADDR_W = ceil(log2(NUM_PIXELS)) + clog2(STRB_W); STRB_W=4 (32-bit) -> +2
 set bits 1
 while {(1 << $bits) < $NUM_PIXELS} { incr bits }
-set ADDR_W [expr {$bits + 1}]
+set ADDR_W [expr {$bits + 2}]
 puts ">>> Obraz ${IMG_W}x${IMG_H} = $NUM_PIXELS px  ->  ADDR_W=$ADDR_W (pojemnosc [expr {1 << ($ADDR_W-1)}] px)"
 
 # ---------------- 2) Biblioteka ----------------

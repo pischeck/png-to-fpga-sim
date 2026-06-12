@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-hex2png.py - odwrotnosc png2hex.py: rekonstrukcja obrazu PNG z pliku .hex (RGB565).
+hex2png.py - odwrotnosc png2hex.py: rekonstrukcja obrazu PNG z pliku .hex (RGB888).
 
-Plik wejsciowy: jedno 16-bitowe slowo na linie (cztery cyfry hex), kolejnosc rastrowa
+Plik wejsciowy: jedno 32-bitowe slowo na linie , kolejnosc rastrowa
 (gora -> dol, lewo -> prawo). Plik .hex nie przechowuje rozdzielczosci,
 wiec szerokosc trzeba podac recznie; wysokosc liczy sie z liczby slow.
-
-UWAGA: konwersja RGB565 jest stratna, wiec odzyskane kolory moga sie nieznacznie
-roznic od oryginalu - to normalne, a nie blad.
 
 Skladnia zgodna z Python 2.7 oraz 3.x.
 
@@ -27,20 +24,16 @@ import sys
 from PIL import Image
 
 
-def rgb565_to_888(value):
-    """Rozwija 16-bitowa wartosc RGB565 na trojke (R, G, B) w skali 0..255."""
-    r5 = (value >> 11) & 0x1F
-    g6 = (value >> 5) & 0x3F
-    b5 = value & 0x1F
-    # replikacja najstarszych bitow na mlodsze daje pelny zakres 0..255
-    r8 = (r5 << 3) | (r5 >> 2)
-    g8 = (g6 << 2) | (g6 >> 4)
-    b8 = (b5 << 3) | (b5 >> 2)
-    return (r8, g8, b8)
+def val32_to_rgb888(value):
+    """Wyciaga skladowe (R, G, B) z 32-bitowej wartosci 0x00RRGGBB."""
+    r = (value >> 16) & 0xFF
+    g = (value >> 8) & 0xFF
+    b = value & 0xFF
+    return (r, g, b)
 
 
 def read_words(in_path):
-    """Wczytuje liste 16-bitowych wartosci z pliku .hex (ignoruje puste linie, // oraz @)."""
+    """Wczytuje liste 32-bitowych wartosci z pliku .hex (ignoruje puste linie, // oraz @)."""
     words = []
     with open(in_path, "r") as f:
         for line in f:
@@ -53,7 +46,7 @@ def read_words(in_path):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Konwersja .hex (RGB565, 16-bitowe slowo na linie) -> PNG."
+        description="Konwersja .hex (RGB888, 32-bitowe slowo na linie) -> PNG."
     )
     parser.add_argument("input", help="sciezka do pliku .hex")
     parser.add_argument("width", type=int, help="szerokosc obrazu w pikselach")
@@ -116,7 +109,7 @@ def main():
     i = 0
     for y in range(height):           # kolejnosc rastrowa: gora -> dol
         for x in range(args.width):   # lewo -> prawo
-            px[x, y] = rgb565_to_888(words[i])
+            px[x, y] = val32_to_rgb888(words[i])
             i += 1
     img.save(out_path)
 
