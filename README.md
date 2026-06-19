@@ -16,14 +16,15 @@
 
 ## Flow Symulacyjny
 Przepływ automatyzuje skrypt `run.do` (TCL), który po kolei realizuje:
-1.  **Generacja Wsadu**: Wywołanie `png2hex.py`, które konwertuje `obrazek.png` do płaskiego pliku tekstowego `image.hex` oraz automatycznie mapuje szerokość adresu (`ADDR_W`) na podstawie rozmiarów.
-2.  **Kompilacja i Mapowanie**: Zbudowanie bibliotek Aldec BFM oraz kompilacja kodu RTL (interfejs -> target -> master BFM -> TB).
-3.  **Transakcje i Weryfikacja**:
+1.  **Lokalizacja BFM**: Dynamiczne wyszukiwanie paczki środowiska Aldec BFM w katalogu domowym użytkownika ('~/Aldec'). Gwarantuje to pełną przenośność (plug-and-play) środowiska symulacyjnego, bez konieczności ręcznego ustawiania ścieżki.
+2.  **Generacja Wsadu**: Wywołanie `png2hex.py`, które konwertuje `obrazek.png` do płaskiego pliku tekstowego `image.hex` oraz automatycznie mapuje szerokość adresu (`ADDR_W`) na podstawie rozmiarów.
+3.  **Kompilacja i Mapowanie**: Zbudowanie bibliotek Aldec BFM oraz kompilacja kodu RTL (interfejs -> target -> master BFM -> TB).
+4.  **Transakcje i Weryfikacja**:
     *   Testbench symuluje burst zapisu przesyłający wsad `image.hex` po magistrali AXI4 do struktury RAM.
     *   Kontrola ścieżki zapisu wewnątrz pamięci.
     *   Testbench symuluje burst odczytu z adresów i weryfikuje pełną zgodność wyjściowych danych z wejściowymi.
     *   Wynik wyrzucany jest jako `image_out.hex` za pośrednictwem funkcji `$writememh`.
-4.  **Rekonstrukcja Obrazu**: Ostateczne wywołanie `hex2png.py` w celu wygenerowania gotowego obrazu ze zweryfikowanego zrzutu z szyny danych.
+5.  **Rekonstrukcja Obrazu**: Ostateczne wywołanie `hex2png.py` w celu wygenerowania gotowego obrazu ze zweryfikowanego zrzutu z szyny danych.
 
 ## Debugowanie
 *   **Zgodność danych na szynie**: Jakiekolwiek przesunięcia na szynie zgłaszane są bezpośrednio do konsoli symulatora przez system makr `$error` z informacją o indeksie błędnego transferu (niezgodność `read_back` vs `img_data`).
