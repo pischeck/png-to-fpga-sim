@@ -16,7 +16,7 @@
 
 ## Flow Symulacyjny
 Przepływ automatyzuje skrypt `run.do` (TCL), który po kolei realizuje:
-1.  **Lokalizacja BFM**: Dynamiczne wyszukiwanie paczki środowiska Aldec BFM w katalogu domowym użytkownika ('~/Aldec'). Gwarantuje to pełną przenośność (plug-and-play) środowiska symulacyjnego, bez konieczności ręcznego ustawiania ścieżki.
+1.  **Lokalizacja BFM**: Dynamiczne wyszukiwanie paczki środowiska Aldec BFM w katalogu domowym użytkownika (`~/Aldec`). Gwarantuje to pełną przenośność (plug-and-play) środowiska symulacyjnego, bez konieczności ręcznego ustawiania ścieżki.
 2.  **Generacja Wsadu**: Wywołanie `png2hex.py`, które konwertuje `obrazek.png` do płaskiego pliku tekstowego `image.hex` oraz automatycznie mapuje szerokość adresu (`ADDR_W`) na podstawie rozmiarów.
 3.  **Kompilacja i Mapowanie**: Zbudowanie bibliotek Aldec BFM oraz kompilacja kodu RTL (interfejs -> target -> master BFM -> TB).
 4.  **Transakcje i Weryfikacja**:
