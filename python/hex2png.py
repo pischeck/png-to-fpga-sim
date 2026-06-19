@@ -1,22 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-hex2png.py - odwrotnosc png2hex.py: rekonstrukcja obrazu PNG z pliku .hex (RGB888).
+hex2png.py - reverse of png2hex.py: reconstructs a PNG image from a .hex file (RGB888).
 
-Plik wejsciowy: jedno 32-bitowe slowo na linie , kolejnosc rastrowa
-(gora -> dol, lewo -> prawo). Plik .hex nie przechowuje rozdzielczosci,
-wiec szerokosc trzeba podac recznie; wysokosc liczy sie z liczby slow.
+Input file: one 32-bit word per line, raster order (top -> bottom, left -> right).
+The .hex file does not store resolution, so width must be provided manually;
+height is calculated from the number of words.
 
-Skladnia zgodna z Python 2.7 oraz 3.x.
+Compatible with Python 2.7 and 3.x.
 
-Wymaga: Pillow  ->  pip install pillow
+Requires: Pillow  ->  pip install pillow
 
-Przyklad uzycia:
-    python3 hex2png.py obraz.hex 128                 # szerokosc 128, wysokosc auto
-    python3 hex2png.py obraz.hex 128 podglad.png
-    python3 hex2png.py obraz.hex 128 --height 64
-
-    3617
+Usage example:
+    python3 hex2png.py image.hex 128                 # width 128, height auto
+    python3 hex2png.py image.hex 128 preview.png
+    python3 hex2png.py image.hex 128 --height 64
 """
 
 import argparse
@@ -25,7 +23,7 @@ from PIL import Image
 
 
 def val32_to_rgb888(value):
-    """Wyciaga skladowe (R, G, B) z 32-bitowej wartosci 0x00RRGGBB."""
+    """Extracts (R, G, B) components from a 32-bit value 0x00RRGGBB."""
     r = (value >> 16) & 0xFF
     g = (value >> 8) & 0xFF
     b = value & 0xFF
@@ -33,7 +31,7 @@ def val32_to_rgb888(value):
 
 
 def read_words(in_path):
-    """Wczytuje liste 32-bitowych wartosci z pliku .hex (ignoruje puste linie, // oraz @)."""
+    """Reads a list of 32-bit values from a .hex file (ignores empty lines, //, and @)."""
     words = []
     with open(in_path, "r") as f:
         for line in f:
@@ -46,57 +44,57 @@ def read_words(in_path):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Konwersja .hex (RGB888, 32-bitowe slowo na linie) -> PNG."
+        description="Convert .hex (RGB888, 32-bit word per line) to PNG."
     )
-    parser.add_argument("input", help="sciezka do pliku .hex")
-    parser.add_argument("width", type=int, help="szerokosc obrazu w pikselach")
+    parser.add_argument("input", help="path to the input .hex file")
+    parser.add_argument("width", type=int, help="image width in pixels")
     parser.add_argument(
         "output",
         nargs="?",
-        help="sciezka wyjsciowa .png (domyslnie: nazwa wejscia z rozszerzeniem .png)",
+        help="output .png path (default: input name with .png extension)",
     )
     parser.add_argument(
         "--height",
         type=int,
         default=None,
-        help="wysokosc (domyslnie liczona z liczby slow / szerokosc)",
+        help="image height (default: calculated from word count / width)",
     )
     args = parser.parse_args()
 
     if args.width <= 0:
-        sys.stderr.write("Blad: szerokosc musi byc dodatnia\n")
+        sys.stderr.write("Error: width must be positive\n")
         sys.exit(1)
 
     try:
         words = read_words(args.input)
     except IOError:
-        sys.stderr.write("Blad: nie mozna otworzyc pliku '{0}'\n".format(args.input))
+        sys.stderr.write("Error: cannot open file '{0}'\n".format(args.input))
         sys.exit(1)
     except ValueError:
-        sys.stderr.write("Blad: plik zawiera linie ktora nie jest poprawna liczba hex\n")
+        sys.stderr.write("Error: file contains a line that is not a valid hex number\n")
         sys.exit(1)
 
     n = len(words)
     if n == 0:
-        sys.stderr.write("Blad: plik nie zawiera zadnych danych\n")
+        sys.stderr.write("Error: file contains no data\n")
         sys.exit(1)
 
     if args.height is None:
         if n % args.width != 0:
             sys.stderr.write(
-                "Blad: liczba slow ({0}) nie dzieli sie przez szerokosc ({1}). "
-                "Podaj poprawna szerokosc lub --height.\n".format(n, args.width)
+                "Error: word count ({0}) is not divisible by width ({1}). "
+                "Provide a valid width or specify --height.\n".format(n, args.width)
             )
             sys.exit(1)
         height = n // args.width
     else:
         height = args.height
         if height <= 0:
-            sys.stderr.write("Blad: wysokosc musi byc dodatnia\n")
+            sys.stderr.write("Error: height must be positive\n")
             sys.exit(1)
         if args.width * height > n:
             sys.stderr.write(
-                "Blad: szerokosc x wysokosc ({0}) przekracza liczbe slow w pliku ({1}).\n".format(
+                "Error: width x height ({0}) exceeds the number of words in the file ({1}).\n".format(
                     args.width * height, n
                 )
             )
@@ -107,15 +105,15 @@ def main():
     img = Image.new("RGB", (args.width, height))
     px = img.load()
     i = 0
-    for y in range(height):           # kolejnosc rastrowa: gora -> dol
-        for x in range(args.width):   # lewo -> prawo
+    for y in range(height):           # raster order: top -> bottom
+        for x in range(args.width):   # left -> right
             px[x, y] = val32_to_rgb888(words[i])
             i += 1
     img.save(out_path)
 
-    print("Zapisano: {0}".format(out_path))
-    print("Rozdzielczosc: {0} x {1} px".format(args.width, height))
-    print("Wczytano slow: {0}".format(n))
+    print("Saved: {0}".format(out_path))
+    print("Resolution: {0} x {1} px".format(args.width, height))
+    print("Words read: {0}".format(n))
 
 
 if __name__ == "__main__":

@@ -1,41 +1,41 @@
 `timescale 1ns / 1ps
 
 module img_ram_tb #(
-    // Nadpisywane z run.do:  asim -gIMG_W=.. -gIMG_H=.. -gADDR_W=..
-    parameter int IMG_W  = 16,            // szerokosc obrazu (px)
-    parameter int IMG_H  = 16,            // wysokosc obrazu (px)
-    parameter int ADDR_W = 16             // szerokosc adresu AXI; pojemnosc = 2**(ADDR_W-1) pikseli
+    // Overwritten by run.do:  asim -gIMG_W=.. -gIMG_H=.. -gADDR_W=..
+    parameter int IMG_W  = 16,            // Image width (px)
+    parameter int IMG_H  = 16,            // Image height (px)
+    parameter int ADDR_W = 16             // AXI address width; capacity = 2**(ADDR_W-1) pixels
 );
 
-    // ---------------- Konfiguracja szyny -----------------------------
-    localparam int DATA_W    = 32;                // 1 piksel RGB888 = 1 slowo AXI
+    // ---------------- Bus Configuration ------------------------------
+    localparam int DATA_W    = 32;                // 1 RGB888 pixel = 1 AXI word
     localparam int ID_W      = 8;
-    localparam int STRB_W    = DATA_W/8;          // = 2
-    localparam int MAX_BEATS = 256;               // AWLEN/ARLEN max -> 256 beatow/burst
-    localparam int NUM_PIXELS = IMG_W * IMG_H;    // = liczba linii w pliku .hex
+    localparam int STRB_W    = DATA_W/8;          // = 4
+    localparam int MAX_BEATS = 256;               // Max AWLEN/ARLEN -> 256 beats/burst
+    localparam int NUM_PIXELS = IMG_W * IMG_H;    // = number of lines in .hex file
 
-    localparam string HEX_IN  = "image.hex";      // wejscie (z png2hex.py)
-    localparam string HEX_OUT = "image_out.hex";  // wyjscie (do hex2png.py)
+    localparam string HEX_IN  = "image.hex";      // input (from png2hex.py)
+    localparam string HEX_OUT = "image_out.hex";  // output (to hex2png.py)
 
-    // ---------------- Zegar i reset ----------------------------------
+    // ---------------- Clock and Reset --------------------------------
     bit clk = 0;
     always #5 clk = ~clk;        // 100 MHz
 
-    bit rst = 1;                 // taxi: reset aktywny w stanie wysokim
+    bit rst = 1;                 // taxi: active-high reset
     initial begin
         repeat (10) @(posedge clk);
         rst = 0;
     end
 
-    // ---------------- Interfejs AXI4 (taxi) --------------------------
-    // Jedna instancja interfejsu; do RAM podajemy modporty wr_slv/rd_slv.
+    // ---------------- AXI4 Interface (taxi) --------------------------
+    // Single interface instance; wr_slv/rd_slv modports connected to RAM.
     taxi_axi_if #(
         .DATA_W (DATA_W),
         .ADDR_W (ADDR_W),
         .ID_W   (ID_W)
     ) axi_if ();
 
-    // ---------------- DUT: pamiec taxi_axi_ram -----------------------
+    // ---------------- DUT: taxi_axi_ram memory -----------------------
     taxi_axi_ram #(
         .ADDR_W          (ADDR_W),
         .PIPELINE_OUTPUT (1'b0)
@@ -46,8 +46,8 @@ module img_ram_tb #(
         .s_axi_rd (axi_if)       // modport rd_slv
     );
 
-    // ---------------- Master BFM AXI4 (Aldec) ------------------------
-    // Porty wrappera laczymy bezposrednio z sygnalami interfejsu po nazwie.
+    // ---------------- AXI4 Master BFM (Aldec) ------------------------
+    // Wrapper ports are connected directly to interface signals by name.
     axi4_master #(
         .DATA_W (DATA_W),
         .ADDR_W (ADDR_W),
@@ -76,11 +76,11 @@ module img_ram_tb #(
         .RLAST    (axi_if.rlast),    .RVALID  (axi_if.rvalid),  .RREADY  (axi_if.rready)
     );
 
-    // ---------------- Bufory obrazu ----------------------------------
-    logic [DATA_W-1:0] img_data  [0:NUM_PIXELS-1];   // obraz zrodlowy (referencja, z HEX_IN)
-    logic [DATA_W-1:0] read_back [0:NUM_PIXELS-1];   // obraz odczytany po AXI
+    // ---------------- Image Buffers ----------------------------------
+    logic [DATA_W-1:0] img_data  [0:NUM_PIXELS-1];   // source image (reference, from HEX_IN)
+    logic [DATA_W-1:0] read_back [0:NUM_PIXELS-1];   // image read via AXI
 
-    // ---------------- Scenariusz testu -------------------------------
+    // ---------------- Test Scenario ----------------------------------
     initial begin : main
         int                remaining, beats, word_idx, k, i;
         int                err;
@@ -89,20 +89,20 @@ module img_ram_tb #(
 
         err = 0;
 
-        // 1) Wczytaj obraz zrodlowy do bufora TB (referencja do porownan).
+        // 1) Load source image into TB buffer (reference for comparisons).
         $readmemh(HEX_IN, img_data);
-        $display("[%0t] Wczytano '%s' (%0d pikseli) do bufora TB", $time, HEX_IN, NUM_PIXELS);
+        $display("[%0t] Loaded '%s' (%0d pixels) into TB buffer", $time, HEX_IN, NUM_PIXELS);
 
-        // Poczekaj na koniec resetu
+        // Wait for reset to deassert
         wait (rst == 0);
         repeat (4) @(posedge clk);
 
-        // 2) ZAPIS calego obrazu po AXI4, burstami po max MAX_BEATS.
+        // 2) WRITE the entire image via AXI4, using bursts up to MAX_BEATS.
         word_idx  = 0;
         remaining = NUM_PIXELS;
         while (remaining > 0) begin
             beats     = (remaining > MAX_BEATS) ? MAX_BEATS : remaining;
-            byte_addr = ADDR_W'(word_idx * STRB_W);   // adres bajtowy slowa startowego
+            byte_addr = ADDR_W'(word_idx * STRB_W);   // byte address of the starting word
             for (k = 0; k < beats; k++)
                 wr_chunk[k] = img_data[word_idx + k];
 
@@ -111,16 +111,16 @@ module img_ram_tb #(
             word_idx  += beats;
             remaining -= beats;
         end
-        $display("[%0t] Zapisano %0d pikseli po AXI4 (kanal AW/W/B)", $time, NUM_PIXELS);
+        $display("[%0t] Written %0d pixels via AXI4 (AW/W/B channels)", $time, NUM_PIXELS);
 
-        // 2a) Kontrola SCIEZKI ZAPISU (backdoor do mem): izoluje blad zapisu od odczytu.
+        // 2a) WRITE PATH check (backdoor to mem): isolates write errors from read errors.
         for (i = 0; i < NUM_PIXELS; i++)
             if (u_ram.mem[i] !== img_data[i]) begin
-                $error("ZAPIS: niezgodnosc na pikselu %0d: mem=%h oczek=%h", i, u_ram.mem[i], img_data[i]);
+                $error("WRITE: mismatch at pixel %0d: mem=%h expected=%h", i, u_ram.mem[i], img_data[i]);
                 err++;
             end
 
-        // 3) ODCZYT calego obrazu po AXI4, burstami po max MAX_BEATS.
+        // 3) READ the entire image via AXI4, using bursts up to MAX_BEATS.
         word_idx  = 0;
         remaining = NUM_PIXELS;
         while (remaining > 0) begin
@@ -135,23 +135,23 @@ module img_ram_tb #(
             word_idx  += beats;
             remaining -= beats;
         end
-        $display("[%0t] Odczytano %0d pikseli po AXI4 (kanal AR/R)", $time, NUM_PIXELS);
+        $display("[%0t] Read %0d pixels via AXI4 (AR/R channels)", $time, NUM_PIXELS);
 
-        // 3a) Kontrola SCIEZKI ODCZYTU: odczyt po AXI vs obraz zrodlowy.
+        // 3a) READ PATH check: AXI read vs source image.
         for (i = 0; i < NUM_PIXELS; i++)
             if (read_back[i] !== img_data[i]) begin
-                $error("ODCZYT: niezgodnosc na pikselu %0d: AXI=%h oczek=%h", i, read_back[i], img_data[i]);
+                $error("READ: mismatch at pixel %0d: AXI=%h expected=%h", i, read_back[i], img_data[i]);
                 err++;
             end
 
-        // 4) Zrzut odczytanych danych do .hex (4 cyfry hex/linia -> zgodne z hex2png.py)
+        // 4) Dump read data to .hex (4 hex digits/line -> compatible with hex2png.py)
         $writememh(HEX_OUT, read_back);
-        $display("[%0t] Zapisano '%s'", $time, HEX_OUT);
+        $display("[%0t] Saved '%s'", $time, HEX_OUT);
 
         if (err == 0)
-            $display("[%0t] WYNIK: PASS - pelna petla AXI zapis->odczyt zgodna (%0d px)", $time, NUM_PIXELS);
+            $display("[%0t] RESULT: PASS - full AXI write->read loop matches (%0d px)", $time, NUM_PIXELS);
         else
-            $display("[%0t] WYNIK: FAIL - %0d niezgodnosci", $time, err);
+            $display("[%0t] RESULT: FAIL - %0d mismatches", $time, err);
 
         #50 $stop;
     end
