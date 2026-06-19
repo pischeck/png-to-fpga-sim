@@ -17,7 +17,16 @@ set HEX_IN    "image.hex"         ;# = HEX_IN  w img_ram_tb.sv (w korzeniu proje
 set HEX_OUT   "image_out.hex"     ;# = HEX_OUT w img_ram_tb.sv
 # IMG_W / IMG_H / ADDR_W wyliczane automatycznie z wyjscia png2hex.py (ponizej)
 
-set BFM_HOME  "/ahome/japisz/Aldec/BFM_AMBA_AXI.2026.04.93130"
+# ---------------- BFM -------------------------
+set ALDEC_DIR "$::env(HOME)/Aldec"
+set BFM_DIRS [glob -nocomplain -directory $ALDEC_DIR BFM_AMBA_AXI.*]
+if {[llength $BFM_DIRS] == 0} {
+    error "Nie znaleziono paczki BFM w katalogu $ALDEC_DIR"
+}
+set BFM_HOME [lindex [lsort -decreasing $BFM_DIRS] 0]
+puts ">>> Znaleziono katalog BFM: $BFM_HOME"
+
+
 set TOP       "work.img_ram_tb"
 set OPTS      "-work work +incdir+$SRC +incdir+$BFM_HOME/hdl/aldec_cores/common"
 
